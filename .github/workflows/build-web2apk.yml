@@ -1,6 +1,6 @@
 name: Build Web2APK
 
-on:
+'on':
   workflow_dispatch:
     inputs:
       app_name:
