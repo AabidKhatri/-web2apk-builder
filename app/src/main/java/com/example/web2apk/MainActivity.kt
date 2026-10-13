@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     swipeRefresh?.isRefreshing = false
-                    progress.setVisibility(View.GONE)
+                    progress.visibility = android.view.View.GONE
                 }
 
                 override fun onReceivedError(
@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     if (request?.isForMainFrame == true) {
                         swipeRefresh?.isRefreshing = false
-                        progress.setVisibility(View.GONE)
+                        progress.visibility = android.view.View.GONE
                         Toast.makeText(this@MainActivity, "Page failed to load. Check your connection.", Toast.LENGTH_LONG).show()
                     }
                 }
