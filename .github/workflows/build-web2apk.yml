@@ -1,1 +1,162 @@
+name: Build Web2APK
 
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "App name (max 30 characters)"
+        required: true
+        default: "My Web App"
+        type: string
+      website_url:
+        description: "Website URL (must start with https://)"
+        required: true
+        default: "https://example.com"
+        type: string
+      package_id:
+        description: "Unique package ID, e.g. com.example.myapp"
+        required: true
+        default: "com.example.mywebapp"
+        type: string
+      version_name:
+        description: "Version name"
+        required: true
+        default: "1.0.0"
+        type: string
+      orientation:
+        description: "Screen orientation"
+        required: true
+        default: "portrait"
+        type: choice
+        options:
+          - portrait
+          - landscape
+          - auto
+      screen_mode:
+        description: "System bars"
+        required: true
+        default: "normal"
+        type: choice
+        options:
+          - normal
+          - fullscreen
+          - kiosk
+      external_links:
+        description: "Open off-site HTTP/HTTPS links"
+        required: true
+        default: "inapp"
+        type: choice
+        options:
+          - inapp
+          - browser
+      pull_refresh:
+        description: "Enable pull-to-refresh"
+        required: true
+        default: true
+        type: boolean
+      exit_confirmation:
+        description: "Ask before exiting"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web2apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate build inputs
+        env:
+          APP_NAME: ${{ inputs.app_name }}
+          WEBSITE_URL: ${{ inputs.website_url }}
+          PACKAGE_ID: ${{ inputs.package_id }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re, sys
+          name = os.environ["APP_NAME"].strip()
+          url = os.environ["WEBSITE_URL"].strip()
+          package = os.environ["PACKAGE_ID"].strip()
+          version = os.environ["VERSION_NAME"].strip()
+          errors = []
+          if not name or len(name) > 30 or any(ord(c) < 32 for c in name):
+              errors.append("App name must be 1–30 characters and contain no control characters.")
+          if not re.match(r"^https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?(?:[/?#][^\s]*)?$", url):
+              errors.append("Website URL must be a valid https:// URL.")
+          if len(url) > 2048:
+              errors.append("Website URL is too long.")
+          if not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+", package):
+              errors.append("Package ID must have at least two dot-separated valid segments.")
+          if len(package) > 180:
+              errors.append("Package ID is too long.")
+          if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,39}", version):
+              errors.append("Version name contains unsupported characters.")
+          if errors:
+              print("\n".join("::error::" + e for e in errors))
+              sys.exit(1)
+          print("Input validation passed.")
+          PY
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build debug APK
+        env:
+          APP_NAME: ${{ inputs.app_name }}
+          WEBSITE_URL: ${{ inputs.website_url }}
+          PACKAGE_ID: ${{ inputs.package_id }}
+          VERSION_NAME: ${{ inputs.version_name }}
+          ORIENTATION: ${{ inputs.orientation }}
+          SCREEN_MODE: ${{ inputs.screen_mode }}
+          EXTERNAL_LINKS: ${{ inputs.external_links }}
+          PULL_REFRESH: ${{ inputs.pull_refresh }}
+          EXIT_CONFIRMATION: ${{ inputs.exit_confirmation }}
+        run: |
+          set -euo pipefail
+          ORIENTATION_VALUE="${ORIENTATION}"
+          SCREEN_MODE_VALUE="${SCREEN_MODE}"
+          EXTERNAL_VALUE="${EXTERNAL_LINKS}"
+          gradle --no-daemon :app:assembleDebug \
+            -PappName="$APP_NAME" \
+            -PwebUrl="$WEBSITE_URL" \
+            -PappId="$PACKAGE_ID" \
+            -PversionName="$VERSION_NAME" \
+            -PversionCode="${GITHUB_RUN_NUMBER}" \
+            -Porientation="$ORIENTATION_VALUE" \
+            -PscreenMode="$SCREEN_MODE_VALUE" \
+            -PexternalLinks="$EXTERNAL_VALUE" \
+            -PpullRefresh="$PULL_REFRESH" \
+            -PexitConfirmation="$EXIT_CONFIRMATION"
+
+      - name: Verify APK exists
+        run: |
+          set -euo pipefail
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          ls -lh app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web2apk-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
