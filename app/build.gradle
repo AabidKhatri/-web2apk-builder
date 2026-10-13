@@ -1,1 +1,61 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
 
+def configuredAppId = project.findProperty('appId') ?: 'com.example.web2apk'
+def configuredAppName = project.findProperty('appName') ?: 'Web2APK App'
+def configuredVersionName = project.findProperty('versionName') ?: '1.0.0'
+def configuredVersionCode = (project.findProperty('versionCode') ?: '1').toString().toInteger()
+def configuredWebUrl = project.findProperty('webUrl') ?: 'https://example.com'
+def configuredOrientation = project.findProperty('orientation') ?: 'portrait'
+def configuredScreenMode = project.findProperty('screenMode') ?: 'normal'
+def configuredExternalLinks = project.findProperty('externalLinks') ?: 'inapp'
+def configuredPullRefresh = (project.findProperty('pullRefresh') ?: 'true').toString().toBoolean()
+def configuredExitConfirmation = (project.findProperty('exitConfirmation') ?: 'true').toString().toBoolean()
+
+android {
+    namespace 'com.example.web2apk'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId configuredAppId
+        minSdk 23
+        targetSdk 35
+        versionCode configuredVersionCode
+        versionName configuredVersionName
+        resValue 'string', 'app_name', configuredAppName
+        buildConfigField 'String', 'WEB_URL', '"' + configuredWebUrl.replace('\\', '\\\\').replace('"', '\\"') + '"'
+        buildConfigField 'String', 'SCREEN_MODE', '"' + configuredScreenMode + '"'
+        buildConfigField 'String', 'EXTERNAL_LINKS', '"' + configuredExternalLinks + '"'
+        buildConfigField 'boolean', 'PULL_REFRESH', configuredPullRefresh.toString()
+        buildConfigField 'boolean', 'EXIT_CONFIRMATION', configuredExitConfirmation.toString()
+        manifestPlaceholders = [screenOrientation: (configuredOrientation == 'portrait' ? 'portrait' : (configuredOrientation == 'landscape' ? 'landscape' : 'unspecified'))]
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+}
