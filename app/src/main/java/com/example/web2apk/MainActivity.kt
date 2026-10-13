@@ -21,7 +21,7 @@ import android.net.Uri
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private var swipeRefresh: SwipeRefreshLayout? = null
-    private lateinit var progress: ProgressBar
+    private lateinit var progress: android.widget.ProgressBar
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     swipeRefresh?.isRefreshing = false
-                    progress.visibility = android.view.View.GONE
+                    progress.setVisibility(android.view.View.GONE)
                 }
 
                 override fun onReceivedError(
@@ -81,14 +81,14 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     if (request?.isForMainFrame == true) {
                         swipeRefresh?.isRefreshing = false
-                        progress.visibility = android.view.View.GONE
+                        progress.setVisibility(android.view.View.GONE)
                         Toast.makeText(this@MainActivity, "Page failed to load. Check your connection.", Toast.LENGTH_LONG).show()
                     }
                 }
             }
         }
 
-        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+        progress = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             isIndeterminate = true
             setBackgroundColor(Color.TRANSPARENT)
         }
